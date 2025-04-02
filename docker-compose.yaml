@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  step1_generate_json:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: generate_json
+    command: >
+      sh -c "while true; do
+               echo '[STEP1] Executando generate_json_master.py...';
+               python generate_json_master.py;
+               echo '[STEP1] Aguardando ${STEP1_INTERVAL} segundos...';
+               sleep ${STEP1_INTERVAL};
+             done"
+    volumes:
+      - .:/app
+    env_file: .env
+    restart: unless-stopped
+
+  step2_upload_s3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: upload_s3
+    command: >
+      sh -c "while true; do
+               echo '[STEP2] Esperando arquivos em ${GENERATE_PATH}...';
+               if ls ${GENERATE_PATH}/*.json 1> /dev/null 2>&1; then
+                 echo '[STEP2] Executando sharepoint_pdf_to_s3_json.py...';
+                 python sharepoint_pdf_to_s3_json.py;
+               else
+                 echo '[STEP2] Nenhum arquivo JSON encontrado. Pulando...';
+               fi;
+               echo '[STEP2] Aguardando ${STEP2_INTERVAL} segundos...';
+               sleep ${STEP2_INTERVAL};
+             done"
+    volumes:
+      - .:/app
+    env_file: .env
+    restart: unless-stopped
